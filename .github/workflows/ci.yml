@@ -4,10 +4,6 @@ on:
   push:
     branches: ["main"]
 
-# 1. ADD THIS: Grants the runner permission to push commits to your repo
-permissions:
-  contents: write 
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -16,7 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # This will fail the pipeline if it finds CRITICAL/HIGH vulns
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -45,32 +40,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
         
-      # 2. FIX: Use the action to safely generate an actual HTML file
-      - name: Generate HTML report
-        uses: aquasecurity/trivy-action@master
-        if: always() # Generates the report even if the scanner found vulnerabilities above
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          format: "template"
-          template: "@/contrib/html.tpl"
-          output: "report.html"
-
-      # 3. FIX: Configure Git identity and safely commit/push
-      - name: Commit and push report
-        if: always() 
-        run: |
-          # Setup Git Identity
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+      - name : Generate rapport in HTML files and add in the repository
+        run : |
+          trivy fs . --format table --output report.html
           git add report.html
+          git commit -m "Rapport de scan Trivy"
+          git push
           
-          # Only commit and push if there are actual changes
-          if ! git diff-index --quiet HEAD; then
-            # Added [skip ci] to the message so pushing this doesn't accidentally trigger a second workflow run!
-            git commit -m "Rapport de scan Trivy [skip ci]"
-            git push
-          else
-            echo "No new vulnerabilities found. Nothing to commit."
-          fi
