@@ -21,6 +21,14 @@ jobs:
           exit-code: "1"
           severity: "CRITICAL,HIGH"
 
+      - name : Generate rapport in HTML files and add in the repository
+        run : |
+          trivy fs . --format table --output report.html
+          git add report.html
+          git commit -m "Rapport de scan Trivy"
+          git push
+          
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -40,10 +48,4 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
         
-      - name : Generate rapport in HTML files and add in the repository
-        run : |
-          trivy fs . --format table --output report.html
-          git add report.html
-          git commit -m "Rapport de scan Trivy"
-          git push
-          
+   
