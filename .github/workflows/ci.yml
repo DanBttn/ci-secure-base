@@ -4,7 +4,6 @@ on:
   push:
     branches: ["main"]
 
-# OBLIGATOIRE : Donne le droit au bot de faire le "git push"
 permissions:
   contents: write
 
@@ -16,7 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Le scan qui va échouer (Exit Code 1) s'il y a des failles
+      # 1. Le scan qui échoue (Exit Code 1) s'il y a des failles
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -26,20 +25,25 @@ jobs:
           exit-code: "1"
           severity: "CRITICAL,HIGH"
 
-      # 2. Génération du HTML (Utilise TOUJOURS "if: always()")
+      # NOUVEAU : On télécharge le modèle HTML officiel directement depuis le dépôt de Trivy
+      - name: Download Trivy HTML Template
+        if: always()
+        run: wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+
+      # 2. Génération du HTML
       - name: Generate HTML report
         uses: aquasecurity/trivy-action@master
-        if: always() # LA MAGIE EST ICI : S'exécute même en cas d'Exit Code 1
+        if: always() 
         with:
           scan-type: "fs"
           scan-ref: "."
           format: "template"
-          template: "@/contrib/html.tpl" # Crée un vrai fichier HTML lisible
+          template: "@html.tpl" # CORRECTION : On pointe vers le fichier local qu'on vient de télécharger
           output: "report.html"
 
       # 3. Commit et Push du rapport
       - name: Commit and push report
-        if: always() # LA MAGIE EST ICI AUSSI
+        if: always() 
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -47,16 +51,15 @@ jobs:
           git add report.html
           
           if ! git diff-index --quiet HEAD; then
-            # Le [skip ci] empêche ton push de relancer ce workflow en boucle
             git commit -m "Ajout du rapport Trivy (HTML) [skip ci]"
             git push
           else
             echo "Le rapport n'a pas changé, rien à push."
           fi
 
-      # 4. Suite du pipeline (Ne s'exécute QUE s'il n'y a PAS eu de faille)
+      # 4. Suite du pipeline (Docker)
       - name: Set up Docker Buildx
-        if: success() # Bloque le déploiement si Trivy a trouvé une faille
+        if: success() 
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
