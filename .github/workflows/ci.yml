@@ -40,6 +40,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
         
-      - name : Generate rapport in HTML files 
+      - name : Generate rapport in HTML files and add in the repository
         run : |
           trivy fs . --format table --output report.html
+          git add report.html
+          git commit -m "Rapport de scan Trivy"
+          git push
+          
